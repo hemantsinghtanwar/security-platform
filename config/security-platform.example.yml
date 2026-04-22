@@ -48,6 +48,7 @@ thresholds:
   requests_per_minute: 900
   requests_per_second_spike: 80
   concurrent_connection_threshold: 250
+  app_port_connection_threshold: 20
   xmlrpc_posts_per_5m: 20
   wp_login_posts_per_5m: 20
   api_calls_per_5m: 150

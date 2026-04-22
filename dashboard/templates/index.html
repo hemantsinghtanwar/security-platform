@@ -72,7 +72,7 @@
               <strong id="metricRps">0</strong>
             </article>
             <article class="metric-card accent-amber">
-              <span>Active connections</span>
+              <span>App port connections</span>
               <strong id="metricConnections">0</strong>
             </article>
             <article class="metric-card accent-blue">
@@ -82,6 +82,10 @@
             <article class="metric-card accent-green">
               <span>Recent events</span>
               <strong id="metricEvents">0</strong>
+            </article>
+            <article class="metric-card accent-blue">
+              <span>Firewall mode</span>
+              <strong id="metricFirewall">iptables</strong>
             </article>
             <article class="metric-card">
               <span>CPU</span>
@@ -102,6 +106,7 @@
               <div class="mini-panel-header">
                 <h3>Top Attacking IPs</h3>
               </div>
+              <p class="subtle">Live attackers on the dashboard port and HTTP traffic sources.</p>
               <div id="topAttackers" class="list-table"></div>
             </section>
             <section class="mini-panel">
@@ -109,6 +114,21 @@
                 <h3>Attack Types</h3>
               </div>
               <div id="attackTypes" class="list-table"></div>
+            </section>
+          </div>
+
+          <div class="split-grid">
+            <section class="mini-panel">
+              <div class="mini-panel-header">
+                <h3>Attacked Domains</h3>
+              </div>
+              <div id="topDomains" class="list-table"></div>
+            </section>
+            <section class="mini-panel">
+              <div class="mini-panel-header">
+                <h3>Attacked Accounts</h3>
+              </div>
+              <div id="topAccounts" class="list-table"></div>
             </section>
           </div>
         </section>

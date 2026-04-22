@@ -62,9 +62,10 @@ function renderRows(containerId, rows, formatter) {
 
 function renderOverview(data) {
   document.getElementById("metricRps").textContent = Number(data.requests_per_second || 0).toFixed(1);
-  document.getElementById("metricConnections").textContent = data.active_connections || 0;
+  document.getElementById("metricConnections").textContent = data.app_port_connections || 0;
   document.getElementById("metricBlocked").textContent = data.blocked_ips || 0;
   document.getElementById("metricEvents").textContent = data.recent_events || 0;
+  document.getElementById("metricFirewall").textContent = data.firewall?.provider || "unknown";
   document.getElementById("metricCpu").textContent = `${data.cpu_percent || 0}%`;
   document.getElementById("metricMemory").textContent = `${data.memory_percent || 0}%`;
   document.getElementById("metricDisk").textContent = `${data.disk_percent || 0}%`;
@@ -75,6 +76,12 @@ function renderOverview(data) {
 
   renderRows("topAttackers", data.top_attackers || [], (row) => `
     <div class="row"><span>${row.ip}</span><strong>${row.count}</strong></div>
+  `);
+  renderRows("topDomains", data.top_domains || [], (row) => `
+    <div class="row"><span>${row.domain}</span><strong>${row.count}</strong></div>
+  `);
+  renderRows("topAccounts", data.top_accounts || [], (row) => `
+    <div class="row"><span>${row.account}</span><strong>${row.count}</strong></div>
   `);
   renderRows("attackTypes", data.attack_counts || [], (row) => `
     <div class="row"><span>${row.event_type}</span><strong>${row.count}</strong></div>
@@ -98,6 +105,8 @@ function renderTimeline(events) {
         <p>${event.message}</p>
         <div class="row"><span>${event.service}</span><span>${event.created_at}</span></div>
         <div class="row"><span>${event.ip || "N/A"}</span><span>${event.action_taken || "observed"}</span></div>
+        <div class="row"><span>${event.raw_data?.account || event.domain || "unmapped"}</span><span>${event.country || "unknown country"}</span></div>
+        <div class="row"><span>${event.raw_data?.port ? `port ${event.raw_data.port}` : (event.path || "no path")}</span><span>${event.raw_data?.count ? `${event.raw_data.count} hits/conns` : `confidence ${event.confidence}`}</span></div>
         <code>${event.sample_log}</code>
       </article>
     `

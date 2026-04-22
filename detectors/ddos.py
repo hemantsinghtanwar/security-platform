@@ -35,7 +35,7 @@ class ConnectionFloodDetector(Detector):
 
         findings: list[Detection] = []
         for ip, count in per_ip.items():
-            if count < self.thresholds.concurrent_connection_threshold:
+            if count < self.thresholds.app_port_connection_threshold:
                 continue
             if self.last_emitted.get(ip) == count:
                 continue
@@ -45,13 +45,13 @@ class ConnectionFloodDetector(Detector):
                     source=f"socket:{self.app_port}",
                     service="app_port",
                     event_type="ddos_connection_flood",
-                    severity="critical" if count >= (self.thresholds.concurrent_connection_threshold * 2) else "high",
+                    severity="critical" if count >= (self.thresholds.app_port_connection_threshold * 2) else "high",
                     summary="Connection flood detected on platform port",
                     message=f"{ip} opened {count} concurrent connections to port {self.app_port}.",
                     sample_log=f"{ip} -> {self.app_port} ({count} concurrent connections)",
                     ip=ip,
                     confidence=92,
-                    raw_data={"count": count, "port": self.app_port},
+                    raw_data={"count": count, "port": self.app_port, "vector": "app_port_connections"},
                     should_block=True,
                 )
             )

@@ -95,7 +95,10 @@ class EmailSettingsUpdate(BaseModel):
 class OverviewOut(BaseModel):
     requests_per_second: float
     active_connections: int
+    app_port_connections: int
     top_attackers: list[dict[str, Any]]
+    top_domains: list[dict[str, Any]]
+    top_accounts: list[dict[str, Any]]
     attack_counts: list[dict[str, Any]]
     blocked_ips: int
     recent_events: int
@@ -104,6 +107,7 @@ class OverviewOut(BaseModel):
     disk_percent: float
     wordpress_insights: dict[str, Any]
     mail_insights: dict[str, Any]
+    firewall: dict[str, Any]
 
 
 class MetricsOut(BaseModel):

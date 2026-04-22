@@ -68,7 +68,7 @@ class DetectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(findings[0].event_type, "api_abuse")
 
     async def test_connection_flood_detector_flags_port_abuse(self) -> None:
-        thresholds = ThresholdSettings(concurrent_connection_threshold=2)
+        thresholds = ThresholdSettings(app_port_connection_threshold=2)
         detector = ConnectionFloodDetector(thresholds, app_port=8443)
 
         class Addr:

@@ -39,6 +39,7 @@ class ThresholdSettings(BaseModel):
     requests_per_minute: int = 900
     requests_per_second_spike: int = 80
     concurrent_connection_threshold: int = 250
+    app_port_connection_threshold: int = 20
     xmlrpc_posts_per_5m: int = 20
     wp_login_posts_per_5m: int = 20
     api_calls_per_5m: int = 150

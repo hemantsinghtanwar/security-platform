@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
+from collections import Counter
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -11,6 +13,7 @@ from sqlalchemy import desc, func, select
 
 from alerts.abuseipdb import AbuseIPDBClient
 from alerts.emailer import EmailAlertService
+from core.account_resolver import AccountResolver
 from core.analytics import TrafficAnalytics
 from core.config import AppSettings
 from core.database import Database
@@ -32,6 +35,9 @@ from detectors.web import WebDetector
 from responders.ban_manager import BanManager
 
 
+logger = logging.getLogger(__name__)
+
+
 class SecurityEngine:
     def __init__(self, settings: AppSettings, db: Database, event_bus: EventBus):
         self.settings = settings
@@ -41,7 +47,9 @@ class SecurityEngine:
         self.emailer = EmailAlertService(db, settings.smtp)
         self.abuseipdb = AbuseIPDBClient(settings.abuseipdb)
         self.ban_manager = BanManager(db, settings.firewall, settings.thresholds)
+        self.account_resolver = AccountResolver()
         self.geoip_reader = self._build_geoip_reader()
+        self.detector_failures: dict[str, tuple[str, datetime]] = {}
         self.log_detectors: list[Detector] = [
             AuthDetector(settings.thresholds, self.analytics),
             WebDetector(settings.thresholds, self.analytics),
@@ -51,11 +59,27 @@ class SecurityEngine:
             SystemDetector(),
             ResourceDetector(settings.thresholds),
         ]
-        self.scan_detectors: list[tuple[Detector, int]] = [
-            (PHPMalwareDetector(db, settings.scans, settings.thresholds), settings.thresholds.php_scan_interval_minutes * 60),
-            (NodeDetector(settings.scans, settings.thresholds), settings.thresholds.node_scan_interval_seconds),
-            (ResourceDetector(settings.thresholds), settings.thresholds.resource_scan_interval_seconds),
-            (ConnectionFloodDetector(settings.thresholds, settings.api.port), 10),
+        self.scan_detectors: list[tuple[Detector, int, int]] = [
+            (
+                PHPMalwareDetector(db, settings.scans, settings.thresholds),
+                settings.thresholds.php_scan_interval_minutes * 60,
+                30,
+            ),
+            (
+                NodeDetector(settings.scans, settings.thresholds),
+                settings.thresholds.node_scan_interval_seconds,
+                10,
+            ),
+            (
+                ResourceDetector(settings.thresholds),
+                settings.thresholds.resource_scan_interval_seconds,
+                10,
+            ),
+            (
+                ConnectionFloodDetector(settings.thresholds, settings.api.port),
+                10,
+                5,
+            ),
         ]
         self.tailer = LogTailer(
             patterns=settings.logs.all_patterns(),
@@ -69,9 +93,12 @@ class SecurityEngine:
         await self._initialize_storage()
         self.tasks.append(asyncio.create_task(self.tailer.run(), name="log-tailer"))
         self.tasks.append(asyncio.create_task(self._ban_cleanup_loop(), name="ban-cleanup"))
-        for detector, interval in self.scan_detectors:
+        for detector, interval, initial_delay in self.scan_detectors:
             self.tasks.append(
-                asyncio.create_task(self._run_detector_loop(detector, interval), name=f"scan-{detector.name}")
+                asyncio.create_task(
+                    self._run_detector_loop(detector, interval, initial_delay),
+                    name=f"scan-{detector.name}",
+                )
             )
 
     async def stop(self) -> None:
@@ -120,26 +147,39 @@ class SecurityEngine:
             for finding in findings:
                 await self._process_detection(finding)
 
-    async def _run_detector_loop(self, detector: Detector, interval: int) -> None:
+    async def _run_detector_loop(self, detector: Detector, interval: int, initial_delay: int = 0) -> None:
+        if initial_delay > 0:
+            await asyncio.sleep(initial_delay)
         while True:
             try:
                 findings = await detector.run_scan()
                 for finding in findings:
                     await self._process_detection(finding)
             except Exception as exc:  # pragma: no cover - defensive background loop
-                await self._process_detection(
-                    Detection(
-                        source=f"detector:{detector.name}",
-                        service="platform",
-                        event_type="detector_failure",
-                        severity="medium",
-                        summary="Background detector raised an exception",
-                        message=str(exc),
-                        sample_log=str(exc),
-                        confidence=50,
-                    )
-                )
+                logger.exception("Detector %s raised an exception", detector.name)
+                await self._record_detector_failure(detector.name, exc)
             await asyncio.sleep(interval)
+
+    async def _record_detector_failure(self, detector_name: str, exc: Exception) -> None:
+        message = str(exc)
+        now = datetime.utcnow()
+        last = self.detector_failures.get(detector_name)
+        if last and last[0] == message and (now - last[1]).total_seconds() < 300:
+            return
+        self.detector_failures[detector_name] = (message, now)
+        await self._process_detection(
+            Detection(
+                source=f"detector:{detector_name}",
+                service="platform",
+                event_type="detector_failure",
+                severity="medium",
+                summary="Background detector raised an exception",
+                message=message,
+                sample_log=message,
+                confidence=50,
+                raw_data={"detector": detector_name},
+            )
+        )
 
     async def _ban_cleanup_loop(self) -> None:
         while True:
@@ -148,6 +188,14 @@ class SecurityEngine:
 
     async def _process_detection(self, detection: Detection) -> None:
         self.analytics.attack_types[detection.event_type] += 1
+        owner = self.account_resolver.resolve(detection.domain, detection.source)
+        if owner["domain"] and not detection.domain:
+            detection.domain = owner["domain"]
+        detection.raw_data = {
+            **detection.raw_data,
+            "account": owner["account"],
+            "resolved_domain": owner["domain"],
+        }
         country = None
         abuse_data = None
         if detection.ip:
@@ -225,15 +273,24 @@ class SecurityEngine:
             mail_abuse_count = await session.scalar(
                 select(func.count(Event.id)).where(Event.service == "mail")
             )
+            recent_rows = await session.scalars(
+                select(Event).order_by(desc(Event.created_at)).limit(500)
+            )
+            recent_event_rows = recent_rows.all()
+        top_domains = self._top_domains(recent_event_rows)
+        top_accounts = self._top_accounts(recent_event_rows)
         return {
             **analytics_snapshot,
             "top_attackers": top_attackers,
+            "top_domains": top_domains,
+            "top_accounts": top_accounts,
             "blocked_ips": int(blocked_count or 0),
             "recent_events": int(recent_events or 0),
             "cpu_percent": metrics["cpu_percent"],
             "memory_percent": metrics["memory_percent"],
             "disk_percent": metrics["disk_percent"],
             "active_connections": metrics["active_connections"],
+            "app_port_connections": metrics["app_port_connections"],
             "wordpress_insights": {
                 "xmlrpc_attacks": int(xmlrpc_count or 0),
                 "wp_login_bruteforce": int(wp_login_count or 0),
@@ -242,9 +299,33 @@ class SecurityEngine:
                 "mail_events": int(mail_abuse_count or 0),
                 "outbound_keys": len(self.analytics.mail_outbound.top(50)),
             },
+            "firewall": {
+                "provider": self.settings.firewall.provider,
+                "chain": self.settings.firewall.iptables_chain,
+                "whitelist_size": len(self.ban_manager.whitelist),
+            },
         }
 
     async def recent_events(self, limit: int = 100) -> list[Event]:
         async with self.db.session_factory() as session:
             rows = await session.scalars(select(Event).order_by(desc(Event.created_at)).limit(limit))
             return rows.all()
+
+    def _top_domains(self, events: list[Event], limit: int = 10) -> list[dict]:
+        counter: Counter[str] = Counter()
+        for event in events:
+            if event.domain:
+                counter[event.domain] += 1
+                continue
+            resolved = (event.raw_data or {}).get("resolved_domain")
+            if resolved:
+                counter[str(resolved)] += 1
+        return [{"domain": domain, "count": count} for domain, count in counter.most_common(limit)]
+
+    def _top_accounts(self, events: list[Event], limit: int = 10) -> list[dict]:
+        counter: Counter[str] = Counter()
+        for event in events:
+            account = (event.raw_data or {}).get("account")
+            if account:
+                counter[str(account)] += 1
+        return [{"account": account, "count": count} for account, count in counter.most_common(limit)]
