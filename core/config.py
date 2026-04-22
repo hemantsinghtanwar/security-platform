@@ -19,7 +19,7 @@ class SMTPSettings(BaseModel):
 
 
 class DatabaseSettings(BaseModel):
-    url: str = "sqlite+aiosqlite:///var/lib/security-platform/security-platform.db"
+    url: str = "sqlite+aiosqlite:////var/lib/security-platform/security-platform.db"
 
 
 class APISettings(BaseModel):
@@ -69,7 +69,8 @@ class GeoIPSettings(BaseModel):
 
 
 class FirewallSettings(BaseModel):
-    provider: str = "auto"
+    provider: str = "iptables"
+    iptables_chain: str = "SECURITY_PLATFORM"
     whitelist_ips: list[str] = Field(default_factory=list)
     admin_ips: list[str] = Field(default_factory=list)
 

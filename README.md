@@ -14,7 +14,7 @@ Licensed under the MIT License. See [LICENSE](LICENSE).
 - Stateful detection engine for brute force, web attacks, mail abuse, API abuse,
   and ModSecurity alerts
 - PHP malware scanning and Node.js process abuse checks
-- Automated response with CSF first and `iptables` fallback
+- Automated response with dedicated `iptables` enforcement
 - FastAPI dashboard with live event and log streaming
 - SQLite by default with a schema ready for PostgreSQL migration
 - SMTP alerts, recipient management, GeoIP hooks, and AbuseIPDB enrichment
@@ -52,6 +52,6 @@ uvicorn api.main:app --host 0.0.0.0 --port 8443
 ## Production Notes
 
 - Run behind TLS or terminate TLS at a trusted reverse proxy
-- Use CSF where available; the platform falls back to `iptables`
+- Use dedicated `iptables` rules through the `SECURITY_PLATFORM` chain
 - Configure whitelist IPs before enabling auto-bans
 - For very large fleets, move to PostgreSQL and increase scanner intervals

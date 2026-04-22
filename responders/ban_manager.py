@@ -19,7 +19,10 @@ class BanManager:
         thresholds: ThresholdSettings,
     ):
         self.db = db
-        self.firewall = FirewallManager(firewall_settings.provider)
+        self.firewall = FirewallManager(
+            firewall_settings.provider,
+            firewall_settings.iptables_chain,
+        )
         self.whitelist = set(firewall_settings.whitelist_ips + firewall_settings.admin_ips)
         self.thresholds = thresholds
 

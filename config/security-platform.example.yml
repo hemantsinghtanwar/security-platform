@@ -3,7 +3,7 @@ config_path: "/etc/security-platform/config.yml"
 admin_email: "hemant@cloudtechtiq.com"
 
 database:
-  url: "sqlite+aiosqlite:///var/lib/security-platform/security-platform.db"
+  url: "sqlite+aiosqlite:////var/lib/security-platform/security-platform.db"
 
 api:
   host: "0.0.0.0"
@@ -34,7 +34,8 @@ geoip:
   city_db_path: "/opt/security-platform/data/GeoLite2-City.mmdb"
 
 firewall:
-  provider: "auto"
+  provider: "iptables"
+  iptables_chain: "SECURITY_PLATFORM"
   whitelist_ips:
     - "127.0.0.1"
   admin_ips:
