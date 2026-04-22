@@ -56,7 +56,7 @@ async def list_blocks(request: Request, _=Depends(get_current_user)) -> list[Blo
 
 @router.get("/metrics")
 async def metrics(request: Request, _=Depends(get_current_user)) -> dict:
-    return collect_system_metrics()
+    return collect_system_metrics(request.app.state.settings.api.port)
 
 
 @router.get("/events/stream")

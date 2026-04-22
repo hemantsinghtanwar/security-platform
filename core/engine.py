@@ -21,6 +21,7 @@ from core.models import AlertRecipient, Base, BlockedIP, Event, Setting
 from detectors.api import APIDetector
 from detectors.auth import AuthDetector
 from detectors.base import Detection, Detector
+from detectors.ddos import ConnectionFloodDetector
 from detectors.mail import MailDetector
 from detectors.malware import PHPMalwareDetector
 from detectors.modsec import ModSecurityDetector
@@ -54,6 +55,7 @@ class SecurityEngine:
             (PHPMalwareDetector(db, settings.scans, settings.thresholds), settings.thresholds.php_scan_interval_minutes * 60),
             (NodeDetector(settings.scans, settings.thresholds), settings.thresholds.node_scan_interval_seconds),
             (ResourceDetector(settings.thresholds), settings.thresholds.resource_scan_interval_seconds),
+            (ConnectionFloodDetector(settings.thresholds, settings.api.port), 10),
         ]
         self.tailer = LogTailer(
             patterns=settings.logs.all_patterns(),
@@ -204,8 +206,9 @@ class SecurityEngine:
             return None
 
     async def overview(self) -> dict:
-        metrics = collect_system_metrics()
+        metrics = collect_system_metrics(self.settings.api.port)
         analytics_snapshot = self.analytics.snapshot()
+        top_attackers = metrics["top_connection_sources"] or analytics_snapshot["top_attackers"]
         async with self.db.session_factory() as session:
             recent_events = await session.scalar(
                 select(func.count(Event.id)).where(Event.created_at >= datetime.utcnow() - timedelta(days=1))
@@ -224,6 +227,7 @@ class SecurityEngine:
             )
         return {
             **analytics_snapshot,
+            "top_attackers": top_attackers,
             "blocked_ips": int(blocked_count or 0),
             "recent_events": int(recent_events or 0),
             "cpu_percent": metrics["cpu_percent"],

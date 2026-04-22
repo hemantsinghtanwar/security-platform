@@ -7,6 +7,7 @@ from core.config import ThresholdSettings
 from core.log_tailer import LogRecord
 from detectors.api import APIDetector
 from detectors.auth import AuthDetector
+from detectors.ddos import ConnectionFloodDetector
 from detectors.mail import MailDetector
 from detectors.web import WebDetector
 
@@ -65,6 +66,31 @@ class DetectorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await detector.detect(record), [])
         findings = await detector.detect(record)
         self.assertEqual(findings[0].event_type, "api_abuse")
+
+    async def test_connection_flood_detector_flags_port_abuse(self) -> None:
+        thresholds = ThresholdSettings(concurrent_connection_threshold=2)
+        detector = ConnectionFloodDetector(thresholds, app_port=8443)
+
+        class Addr:
+            def __init__(self, ip: str, port: int):
+                self.ip = ip
+                self.port = port
+
+        class Connection:
+            def __init__(self, remote_ip: str):
+                self.laddr = Addr("203.0.113.25", 8443)
+                self.raddr = Addr(remote_ip, 55000)
+                self.status = "ESTABLISHED"
+
+        original = __import__("psutil").net_connections
+        import psutil
+        psutil.net_connections = lambda kind="inet": [Connection("198.51.100.44"), Connection("198.51.100.44")]
+        try:
+            findings = await detector.run_scan()
+        finally:
+            psutil.net_connections = original
+        self.assertEqual(findings[0].event_type, "ddos_connection_flood")
+        self.assertEqual(findings[0].ip, "198.51.100.44")
 
 
 if __name__ == "__main__":

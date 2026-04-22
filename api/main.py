@@ -57,7 +57,7 @@ app.include_router(routes_settings.router)
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html", {"request": request})
 
 
 @app.get("/health")
