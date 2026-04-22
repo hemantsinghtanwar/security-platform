@@ -188,6 +188,7 @@ class SecurityEngine:
 
     async def _process_detection(self, detection: Detection) -> None:
         self.analytics.attack_types[detection.event_type] += 1
+        event_created_at = datetime.utcnow()
         owner = self.account_resolver.resolve(detection.domain, detection.source)
         if owner["domain"] and not detection.domain:
             detection.domain = owner["domain"]
@@ -221,7 +222,7 @@ class SecurityEngine:
             "raw_data": {**detection.raw_data, "abuseipdb": abuse_data or {}},
             "country": country,
             "confidence": detection.confidence,
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": event_created_at,
         }
         async with self.db.session_factory() as session:
             event = Event(**payload)
@@ -229,9 +230,8 @@ class SecurityEngine:
             await session.commit()
             await session.refresh(event)
             outbound = {
-                **payload,
+                **{**payload, "created_at": event.created_at.isoformat()},
                 "id": event.id,
-                "created_at": event.created_at.isoformat(),
             }
         await self.event_bus.publish_event(outbound)
         if detection.severity in {"high", "critical"}:
