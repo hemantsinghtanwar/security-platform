@@ -1,8 +1,12 @@
 # Security Platform
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 Enterprise-grade security monitoring, threat detection, and response platform
 for WHM/cPanel fleets hosting WordPress, PHP, and Node.js applications on
 AlmaLinux, RHEL, Rocky Linux, and CentOS.
+
+Licensed under the MIT License. See [LICENSE](LICENSE).
 
 ## Highlights
 
