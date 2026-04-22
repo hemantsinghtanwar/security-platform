@@ -1,0 +1,99 @@
+platform_name: "WHM Security Platform"
+config_path: "/etc/security-platform/config.yml"
+admin_email: "hemant@cloudtechtiq.com"
+
+database:
+  url: "sqlite+aiosqlite:///var/lib/security-platform/security-platform.db"
+
+api:
+  host: "0.0.0.0"
+  port: 8443
+  jwt_secret: "replace-with-a-long-random-secret"
+  jwt_algorithm: "HS256"
+  jwt_expire_minutes: 480
+  secure_cookies: false
+  allowed_origins:
+    - "https://127.0.0.1:8443"
+
+smtp:
+  host: "localhost"
+  port: 25
+  username: null
+  password: null
+  sender: "security-platform@localhost"
+  use_tls: false
+  use_starttls: false
+
+abuseipdb:
+  enabled: false
+  api_key: null
+  confidence_threshold: 75
+
+geoip:
+  enabled: false
+  city_db_path: "/opt/security-platform/data/GeoLite2-City.mmdb"
+
+firewall:
+  provider: "auto"
+  whitelist_ips:
+    - "127.0.0.1"
+  admin_ips:
+    - "203.0.113.10"
+
+thresholds:
+  ssh_failures_per_5m: 8
+  cpanel_failures_per_5m: 8
+  mail_auth_failures_per_10m: 10
+  requests_per_minute: 900
+  requests_per_second_spike: 80
+  concurrent_connection_threshold: 250
+  xmlrpc_posts_per_5m: 20
+  wp_login_posts_per_5m: 20
+  api_calls_per_5m: 150
+  outbound_emails_per_10m: 250
+  node_cpu_percent: 85.0
+  node_memory_mb: 1024
+  process_cpu_percent: 95.0
+  process_memory_mb: 2048
+  temp_ban_minutes: 30
+  permanent_ban_after: 5
+  php_scan_interval_minutes: 15
+  node_scan_interval_seconds: 60
+  resource_scan_interval_seconds: 60
+  log_scan_interval_seconds: 1
+  log_refresh_interval_seconds: 30
+  max_php_files_per_cycle: 1000
+
+logs:
+  system_messages:
+    - "/var/log/messages"
+    - "/var/log/secure"
+  cpanel:
+    - "/usr/local/cpanel/logs/access_log"
+    - "/usr/local/cpanel/logs/login_log"
+    - "/usr/local/cpanel/logs/error_log"
+    - "/usr/local/cpanel/logs/cphulkd.log"
+    - "/usr/local/cpanel/logs/cphulkd_errors.log"
+    - "/usr/local/cpanel/logs/api_log"
+    - "/usr/local/cpanel/logs/session_log"
+  mail:
+    - "/var/log/exim_mainlog"
+    - "/var/log/exim_rejectlog"
+    - "/var/log/maillog"
+  web:
+    - "/etc/apache2/logs/domlogs/*"
+    - "/var/log/apache2/error_log"
+    - "/var/log/apache2/modsec_audit.log"
+  mysql:
+    - "/var/log/mysqld.log"
+  performance:
+    - "/var/log/dcpumon/*"
+
+scans:
+  php_roots:
+    - "/home"
+  node_allowed_ports:
+    - 80
+    - 443
+    - 3000
+    - 8080

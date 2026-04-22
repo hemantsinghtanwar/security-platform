@@ -1,0 +1,6 @@
+alerts
+api
+core
+dashboard
+detectors
+responders

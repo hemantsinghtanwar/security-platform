@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WHM Security Platform</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div>
+          <p class="eyebrow">Security Operations</p>
+          <h1>WHM Security Platform</h1>
+          <p class="subtle">
+            Real-time monitoring and response for WordPress, PHP, Node.js, and
+            WHM/cPanel infrastructure.
+          </p>
+        </div>
+
+        <div class="status-card">
+          <span class="status-dot"></span>
+          <div>
+            <strong>Live ingestion</strong>
+            <p id="authState">Waiting for login</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="#overview">Overview</a>
+          <a href="#timeline">Timeline</a>
+          <a href="#logs">Logs</a>
+          <a href="#insights">Insights</a>
+          <a href="#settings">Settings</a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <section id="loginPanel" class="panel login-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Secure Access</p>
+              <h2>Administrator Login</h2>
+            </div>
+          </div>
+          <form id="loginForm" class="grid-form">
+            <label>
+              Username
+              <input type="text" name="username" value="admin" required />
+            </label>
+            <label>
+              Password
+              <input type="password" name="password" required />
+            </label>
+            <button type="submit">Sign in</button>
+          </form>
+          <p id="loginError" class="error-text"></p>
+        </section>
+
+        <section id="overview" class="panel hidden">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Live Monitoring</p>
+              <h2>Server Risk Surface</h2>
+            </div>
+            <button id="logoutButton" class="ghost-button">Log out</button>
+          </div>
+
+          <div class="metrics-grid">
+            <article class="metric-card accent-red">
+              <span>Requests / sec</span>
+              <strong id="metricRps">0</strong>
+            </article>
+            <article class="metric-card accent-amber">
+              <span>Active connections</span>
+              <strong id="metricConnections">0</strong>
+            </article>
+            <article class="metric-card accent-blue">
+              <span>Blocked IPs</span>
+              <strong id="metricBlocked">0</strong>
+            </article>
+            <article class="metric-card accent-green">
+              <span>Recent events</span>
+              <strong id="metricEvents">0</strong>
+            </article>
+            <article class="metric-card">
+              <span>CPU</span>
+              <strong id="metricCpu">0%</strong>
+            </article>
+            <article class="metric-card">
+              <span>Memory</span>
+              <strong id="metricMemory">0%</strong>
+            </article>
+            <article class="metric-card">
+              <span>Disk</span>
+              <strong id="metricDisk">0%</strong>
+            </article>
+          </div>
+
+          <div class="split-grid">
+            <section class="mini-panel">
+              <div class="mini-panel-header">
+                <h3>Top Attacking IPs</h3>
+              </div>
+              <div id="topAttackers" class="list-table"></div>
+            </section>
+            <section class="mini-panel">
+              <div class="mini-panel-header">
+                <h3>Attack Types</h3>
+              </div>
+              <div id="attackTypes" class="list-table"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="timeline" class="panel hidden">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Security Panel</p>
+              <h2>Attack Timeline</h2>
+            </div>
+          </div>
+
+          <form id="filterForm" class="inline-form">
+            <input type="text" name="ip" placeholder="Filter by IP" />
+            <input type="text" name="domain" placeholder="Filter by domain" />
+            <input type="text" name="service" placeholder="Filter by service" />
+            <select name="severity">
+              <option value="">All severities</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+            <button type="submit">Apply filters</button>
+          </form>
+
+          <div id="eventTimeline" class="timeline"></div>
+        </section>
+
+        <section id="logs" class="panel hidden">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Real-Time Viewer</p>
+              <h2>Log Stream</h2>
+            </div>
+          </div>
+          <div class="inline-form">
+            <select id="logSource"></select>
+            <button id="reloadLogs" class="ghost-button" type="button">Reconnect stream</button>
+          </div>
+          <pre id="logViewer" class="log-viewer"></pre>
+        </section>
+
+        <section id="insights" class="panel hidden">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Focused Visibility</p>
+              <h2>WordPress, Mail, and Firewall Insights</h2>
+            </div>
+          </div>
+          <div class="triple-grid">
+            <article class="mini-panel">
+              <h3>WordPress</h3>
+              <dl class="stat-list">
+                <div><dt>XML-RPC attacks</dt><dd id="wpXmlrpc">0</dd></div>
+                <div><dt>WP login brute force</dt><dd id="wpLogins">0</dd></div>
+              </dl>
+            </article>
+            <article class="mini-panel">
+              <h3>Mail</h3>
+              <dl class="stat-list">
+                <div><dt>Mail events</dt><dd id="mailEvents">0</dd></div>
+                <div><dt>Outbound keys</dt><dd id="mailOutbound">0</dd></div>
+              </dl>
+            </article>
+            <article class="mini-panel">
+              <h3>Blocked IPs</h3>
+              <div id="blockedTable" class="list-table"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="settings" class="panel hidden">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Alerting & Control</p>
+              <h2>Email Settings and Manual Response</h2>
+            </div>
+          </div>
+
+          <div class="split-grid">
+            <section class="mini-panel">
+              <h3>SMTP Configuration</h3>
+              <form id="smtpForm" class="grid-form">
+                <label>Host<input type="text" name="host" required /></label>
+                <label>Port<input type="number" name="port" required /></label>
+                <label>Sender<input type="email" name="sender" required /></label>
+                <label>Username<input type="text" name="username" /></label>
+                <label>Password<input type="password" name="password" /></label>
+                <label class="checkbox"><input type="checkbox" name="use_tls" /> TLS</label>
+                <label class="checkbox"><input type="checkbox" name="use_starttls" /> STARTTLS</label>
+                <button type="submit">Save SMTP</button>
+              </form>
+            </section>
+
+            <section class="mini-panel">
+              <h3>Alert Recipients</h3>
+              <form id="recipientForm" class="inline-form">
+                <input type="email" name="email" placeholder="client@example.com" required />
+                <input type="text" name="name" placeholder="Client name" />
+                <button type="submit">Add recipient</button>
+              </form>
+              <div id="recipientList" class="list-table"></div>
+            </section>
+          </div>
+
+          <section class="mini-panel">
+            <h3>Manual IP Block</h3>
+            <form id="blockForm" class="inline-form">
+              <input type="text" name="ip" placeholder="IP address" required />
+              <input type="text" name="reason" placeholder="Reason" required />
+              <input type="number" name="duration_minutes" value="60" min="1" />
+              <label class="checkbox"><input type="checkbox" name="permanent" /> Permanent</label>
+              <button type="submit">Block IP</button>
+            </form>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
